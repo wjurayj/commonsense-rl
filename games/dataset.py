@@ -27,7 +27,7 @@ def get_evaluation_game_env(game_path, requested_infos, max_episode_steps, batch
     game_file_names = []
 
     if os.path.isdir(game_path):
-        game_file_names += glob.glob(os.path.join(game_path, "*.z8"))
+        game_file_names += glob.glob(os.path.join(game_path, "*.ulx"))
         if verbose:
             print(os.path.dirname(game_path), end="")
     else:
