@@ -91,6 +91,7 @@ class CommandScorerWithKG(nn.Module):
         state_hidden = state_hidden.transpose(0, 1).contiguous().squeeze(1) # batch x hidden
 
         # Commands/Actions
+        # TODO: Need to reformulate?
         cmds_embedding = self.word_embedding(commands)
         cmds_embedding = self.word_embedding_prj(cmds_embedding)
         cmds_embedding = cmds_embedding.view(batch_size * nb_cmds, commands.size(2),

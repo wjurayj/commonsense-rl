@@ -14,6 +14,7 @@ from utils.textworld_utils import serialize_facts, process_full_facts, process_s
 from utils.kg import construct_graph, add_triplets_to_graph, shortest_path_subgraph, khop_neighbor_graph, ego_graph_seed_expansion
 from utils.extractor import any_substring_extraction
 
+from transformers import BertTokenizerFast
 # Agent must have train(), test(), act() functions and infos_to_request as properties
 
 
@@ -47,6 +48,8 @@ class KnowledgeAwareAgent:
 
         self._episode_has_started = False
 
+        self.bert_tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+
         if self.word_emb_type is not None:
             self.word_emb = load_embeddings(self.emb_loc, self.word_emb_type)
             self.word_vocab = self.word_emb.vocab
@@ -62,7 +65,7 @@ class KnowledgeAwareAgent:
             self.node_vocab = self.graph_emb.vocab
             for i, w in enumerate(self.node_vocab):
                 self.node2id[w] = i
-        self.model = scorer.CommandScorerWithKG(self.word_emb, self.graph_emb, self.graph_type,
+        self.model = scorer.CommandScorerWithKG('bert', self.graph_emb, self.graph_type,
                                                 hidden_size=self.hidden_size, device=device)
         if torch.cuda.is_available():
             self.model.to(device)
@@ -251,7 +254,7 @@ class KnowledgeAwareAgent:
 
     def _process(self, texts, vocabulary, sentinel = False):
         # texts = list(map(self.extract_entity_ids, texts))
-        texts = [self.tokenizer.extract_entity_ids(word, vocabulary) for word in texts]
+        texts = [self.tokenizer.extract_entity_ids(text, vocabulary) for text in texts]
         max_len = max(len(l) for l in texts)
         num_items = len(texts) + 1 if sentinel else len(texts)  # Add sentinel entry here for the attention mechanism
         if "<PAD>" in vocabulary:
@@ -265,6 +268,27 @@ class KnowledgeAwareAgent:
 
         padded_tensor = to_tensor(padded,self.device)
         return padded_tensor
+    
+    def _bert_tokenize_obs(self, texts):
+        return self.bert_tokenizer(texts, return_tensors="pt", padding=True)
+
+    def _bert_tokenize_cmds(self, batch_size, infos):
+        command_list = []
+        for b in range(batch_size):
+            # TODO: Verify correct sizing
+            cmd_b = self.bert_tokenizer(infos["admissible_commands"][b],return_tensors="pt")
+            command_list.append(cmd_b)
+        max_num_candidate = max_len(infos["admissible_commands"])
+        max_num_word = max([cmd.size(1) for cmd in command_list])
+        cmds_embeddings = to_tensor(np.zeros((batch_size, max_num_candidate, max_num_word)), self.device)
+        for b in range(batch_size):
+            cmds_embeddings[b,:command_list[b].size(0), :command_list[b].size(1)] = command_list[b]
+        
+        return {
+            'input_ids': cmds_embeddings,
+            'token_types_ids': torch.zeros_like(cmds_embeddings, device=self.device),
+            'attention_mask': ((cmds_embeddings!=0)+0).to(self.device)
+        }
 
     def _discount_rewards(self, batch_id, last_values):
         returns, advantages = [], []
@@ -294,18 +318,12 @@ class KnowledgeAwareAgent:
         state = ["{}\n{}\n{}\n{}".format(obs[b], infos["description"][b], infos["inventory"][b], ' \n'.join(
                         scored_commands[b])) for b in range(batch_size)]
         # Tokenize and pad the input and the commands to chose from.
-        state_tensor = self._process(state, self.word2id)
+        # TODO: SWAP W BERT
+        # obs_tensor = self._process(state, self.word2id)
+        obs_obj = self._bert_tokenize_obs(state)
+        cmds_obj = self._bert_tokenize_cmds(batch_size, infos)
 
-        command_list = []
-        for b in range(batch_size):
-            cmd_b = self._process(infos["admissible_commands"][b],self.word2id)
-            command_list.append(cmd_b)
-        max_num_candidate = max_len(infos["admissible_commands"])
-        max_num_word = max([cmd.size(1) for cmd in command_list])
-        commands_tensor = to_tensor(np.zeros((batch_size, max_num_candidate, max_num_word)), self.device)
-        for b in range(batch_size):
-            commands_tensor[b,:command_list[b].size(0), :command_list[b].size(1)] = command_list[b]
-
+        
         localkg_tensor = torch.FloatTensor()
         localkg_adj_tensor = torch.FloatTensor()
         worldkg_tensor = torch.FloatTensor()
@@ -376,8 +394,8 @@ class KnowledgeAwareAgent:
             localkg_hint_tensor = self._process(hint_str, self.word2id)
             worldkg_hint_tensor = self._process(hint_str, self.node2id)
 
-        input_t.append(state_tensor)
-        input_t.append(commands_tensor)
+        input_t.append(obs_obj)
+        input_t.append(cmds_obj)
         input_t.append(localkg_tensor)
         input_t.append(localkg_hint_tensor)
         input_t.append(localkg_adj_tensor)

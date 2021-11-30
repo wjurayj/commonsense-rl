@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from utils.generic import masked_softmax
-
+from transformers import BertModel
+from transformers.tokenization_utils_base import BatchEncoding
 
 def emb_layer(keyed_vectors, trainable=False):
     """Create an Embedding layer from the supplied gensim keyed_vectors."""
@@ -17,21 +18,33 @@ def emb_layer(keyed_vectors, trainable=False):
 class PretrainedEmbeddings(torch.nn.Module):
     def __init__(self,keyed_vectors, trainable = False):
         super().__init__()
-        self.embedding = emb_layer(keyed_vectors, trainable)
-        oov_vector = torch.tensor(keyed_vectors['<UNK>'].copy(), dtype=torch.float32)
-        self.dim = oov_vector.shape[0]
-        # vector for oov
-        self.oov = torch.nn.Parameter(data=oov_vector)
-        self.oov_index = -1
+        if keyed_vectors == "bert":
+            self.is_bert = True
+            self.bert = BertModel.from_pretrained('bert-base-uncased')
+            self.dim = 768
+        else:
+            self.is_bert = False
+            self.embedding = emb_layer(keyed_vectors, trainable)
+            oov_vector = torch.tensor(keyed_vectors['<UNK>'].copy(), dtype=torch.float32)
+            self.dim = oov_vector.shape[0]
+            # vector for oov
+            self.oov = torch.nn.Parameter(data=oov_vector)
+            self.oov_index = -1
 
-    def forward(self, arr):
-        N = arr.shape[0]
-        items = arr.shape[1]
-        mask = (arr == self.oov_index).long()
-        mask_ = mask.unsqueeze(-1).float()
-        embed = self.embedding((1-mask)*arr)
-        embed = (1-mask_)*embed + mask_*(self.oov.expand_as(embed))
-        return embed
+    def forward(self, input):
+        if self.is_bert:
+            # if type(input) in (dict, BatchEncoding):
+            #TODO: Return hidden state or pooled state? 
+            return self.bert(**input)["last_hidden_state"]
+
+        else:
+            N = input.shape[0]
+            items = input.shape[1]
+            mask = (input == self.oov_index).long()
+            mask_ = mask.unsqueeze(-1).float()
+            embed = self.embedding((1-mask)*input)
+            embed = (1-mask_)*embed + mask_*(self.oov.expand_as(embed))
+            return embed
 
 
 class GraphAttentionLayer(nn.Module):
