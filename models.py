@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 from utils.generic import masked_softmax
 from transformers import BertModel
-from transformers.tokenization_utils_base import BatchEncoding
 
 def emb_layer(keyed_vectors, trainable=False):
     """Create an Embedding layer from the supplied gensim keyed_vectors."""
