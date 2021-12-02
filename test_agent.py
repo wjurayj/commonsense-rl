@@ -34,7 +34,7 @@ def play(agent, opt, random_action=False):
     if opt.game_name:
         game_path = game_path + "/"+ opt.game_name
 
-    env, game_file_names = dataset.get_game_env(game_path, infos_to_request, opt.max_step_per_episode, opt.batch_size,
+    env, game_file_names = dataset.get_evaluation_game_env(game_path, infos_to_request, opt.max_step_per_episode, opt.batch_size,
                                                 opt.mode, opt.verbose)
     # Get Goals as graphs
     goal_graphs = {}
