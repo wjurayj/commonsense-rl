@@ -14,7 +14,7 @@ from utils.textworld_utils import serialize_facts, process_full_facts, process_s
 from utils.kg import construct_graph, add_triplets_to_graph, shortest_path_subgraph, khop_neighbor_graph, ego_graph_seed_expansion
 from utils.extractor import any_substring_extraction
 
-from transformers import BertTokenizerFast
+from transformers import BertTokenizer
 # Agent must have train(), test(), act() functions and infos_to_request as properties
 
 
@@ -48,7 +48,7 @@ class KnowledgeAwareAgent:
 
         self._episode_has_started = False
 
-        self.bert_tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
         if self.word_emb_type is not None:
             self.word_emb = load_embeddings(self.emb_loc, self.word_emb_type)
@@ -270,25 +270,21 @@ class KnowledgeAwareAgent:
         return padded_tensor
     
     def _bert_tokenize_obs(self, texts):
-        return self.bert_tokenizer(texts, return_tensors="pt", padding=True)
+        return self.bert_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.device)
 
     def _bert_tokenize_cmds(self, batch_size, infos):
         command_list = []
         for b in range(batch_size):
             # TODO: Verify correct sizing
-            cmd_b = self.bert_tokenizer(infos["admissible_commands"][b],return_tensors="pt")
-            command_list.append(cmd_b)
+            cmd_b = self.bert_tokenizer(infos["admissible_commands"][b],return_tensors="pt",padding=True, truncation=True)
+            command_list.append(cmd_b['input_ids'])
         max_num_candidate = max_len(infos["admissible_commands"])
         max_num_word = max([cmd.size(1) for cmd in command_list])
         cmds_embeddings = to_tensor(np.zeros((batch_size, max_num_candidate, max_num_word)), self.device)
         for b in range(batch_size):
             cmds_embeddings[b,:command_list[b].size(0), :command_list[b].size(1)] = command_list[b]
         
-        return {
-            'input_ids': cmds_embeddings,
-            'token_types_ids': torch.zeros_like(cmds_embeddings, device=self.device),
-            'attention_mask': ((cmds_embeddings!=0)+0).to(self.device)
-        }
+        return cmds_embeddings
 
     def _discount_rewards(self, batch_id, last_values):
         returns, advantages = [], []
@@ -322,8 +318,10 @@ class KnowledgeAwareAgent:
         # obs_tensor = self._process(state, self.word2id)
         obs_obj = self._bert_tokenize_obs(state)
         cmds_obj = self._bert_tokenize_cmds(batch_size, infos)
+        # print("OBJ SIZE", obs_obj['input_ids'].size())
+        # print("CMD SIZE", cmds_obj['input_ids'].size())
+        # print("CMD", cmds_obj['input_ids'])
 
-        
         localkg_tensor = torch.FloatTensor()
         localkg_adj_tensor = torch.FloatTensor()
         worldkg_tensor = torch.FloatTensor()

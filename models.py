@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 from utils.generic import masked_softmax
 from transformers import BertModel
-from transformers.tokenization_utils_base import BatchEncoding
 
 def emb_layer(keyed_vectors, trainable=False):
     """Create an Embedding layer from the supplied gensim keyed_vectors."""
@@ -35,7 +34,14 @@ class PretrainedEmbeddings(torch.nn.Module):
         if self.is_bert:
             # if type(input) in (dict, BatchEncoding):
             #TODO: Return hidden state or pooled state? 
-            return self.bert(**input)["last_hidden_state"]
+            if type(input) is torch.Tensor and len(input.size())==3:
+                cmds= []
+                for i in range(input.size(0)):
+                    cmd = input[i]
+                    cmds.append(self.bert(input_ids=cmd, token_type_ids=torch.zeros_like(cmd), attention_mask=((cmd!=0)+0).to(cmd.device))['last_hidden_state'])
+                return torch.stack(cmds).to(cmd.device)
+            else:
+                return self.bert(**input)["last_hidden_state"]
 
         else:
             N = input.shape[0]

@@ -71,8 +71,8 @@ class CommandScorerWithKG(nn.Module):
         self.count = 1
 
     def forward(self, obs, commands, local_graph, local_hints, local_adj, world_graph, world_hints, world_adj, **kwargs):
-        input_length = obs.size(1)
-        batch_size = obs.size(0)
+        input_length = obs['input_ids'].size(1) if "input_ids" in obs else obs.size(1)
+        batch_size = obs['input_ids'].size(0) if 'input_ids' in obs else obs.size(0)
         nb_cmds = commands.size(1)
         cmd_selector_input = []
 
