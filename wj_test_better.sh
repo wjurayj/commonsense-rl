@@ -9,6 +9,8 @@
 
 source /gpfs/runtime/opt/anaconda/2020.02/etc/profile.d/conda.sh
 echo loaded_anaconda_module
+module load gcc/10.2
+module load cuda/11.3.1
 
 conda activate ../twc-nate
 echo activated_twc_env
