@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from utils.generic import masked_softmax
-from transformers import LongformerModel
+from transformers import BigBirdModel
 
 def emb_layer(keyed_vectors, trainable=False):
     """Create an Embedding layer from the supplied gensim keyed_vectors."""
@@ -17,8 +17,8 @@ def emb_layer(keyed_vectors, trainable=False):
 class PretrainedEmbeddings(torch.nn.Module):
     def __init__(self,keyed_vectors, trainable = False):
         super().__init__()
-        if type(keyed_vectors) is LongformerModel:
-            self.is_lf = True
+        if type(keyed_vectors) is BigBirdModel:
+            self.is_bigbird = True
             # TODO: Incorporate optional trainability
             self.model = keyed_vectors
             self.dim = 768
@@ -26,7 +26,7 @@ class PretrainedEmbeddings(torch.nn.Module):
             for param in self.model.parameters():
                 param.requires_grad = trainable
         else:
-            self.is_lf = False
+            self.is_bigbird = False
             self.embedding = emb_layer(keyed_vectors, trainable)
             oov_vector = torch.tensor(keyed_vectors['<UNK>'].copy(), dtype=torch.float32)
             self.dim = oov_vector.shape[0]
@@ -35,7 +35,7 @@ class PretrainedEmbeddings(torch.nn.Module):
             self.oov_index = -1
 
     def forward(self, input):
-        if self.is_lf:
+        if self.is_bigbird:
             # If commands
             if type(input) is torch.Tensor and len(input.size())==3:
                 cmds= []
