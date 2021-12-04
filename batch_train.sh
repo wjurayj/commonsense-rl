@@ -2,7 +2,7 @@
 #SBATCH --time=1:00:00
 
 #SBATCH -p gpu --gres=gpu:1
-#SBATCH --mem=32g
+#SBATCH --mem=64
 #SBATCH -J train_twc_agent_easy
 #SBATCH -e logs/wj_better_easy_GloVe_testing.err
 #SBATCH -o logs/wj_better_easy_GloVe_testing.out

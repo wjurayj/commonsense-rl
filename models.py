@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from utils.generic import masked_softmax
-from transformers import BertModel
+from transformers import LongformerModel
 
 def emb_layer(keyed_vectors, trainable=False):
     """Create an Embedding layer from the supplied gensim keyed_vectors."""
@@ -17,13 +17,13 @@ def emb_layer(keyed_vectors, trainable=False):
 class PretrainedEmbeddings(torch.nn.Module):
     def __init__(self,keyed_vectors, trainable = False):
         super().__init__()
-        if type(keyed_vectors) is BertModel:
-            self.is_bert = True
+        if type(keyed_vectors) is LongformerModel:
+            self.is_lf = True
             # TODO: Incorporate optional trainability
             self.model = keyed_vectors
             self.dim = 768
         else:
-            self.is_bert = False
+            self.is_lf = False
             self.embedding = emb_layer(keyed_vectors, trainable)
             oov_vector = torch.tensor(keyed_vectors['<UNK>'].copy(), dtype=torch.float32)
             self.dim = oov_vector.shape[0]
@@ -32,15 +32,15 @@ class PretrainedEmbeddings(torch.nn.Module):
             self.oov_index = -1
 
     def forward(self, input):
-        if self.is_bert:
-            # if type(input) in (dict, BatchEncoding):
-            #TODO: Return hidden state or pooled state? 
+        if self.is_lf:
+            # If commands
             if type(input) is torch.Tensor and len(input.size())==3:
                 cmds= []
                 for i in range(input.size(0)):
                     cmd = input[i]
                     cmds.append(self.model(input_ids=cmd, token_type_ids=torch.zeros_like(cmd), attention_mask=((cmd!=0)+0).to(cmd.device))['last_hidden_state'])
                 return torch.stack(cmds).to(cmd.device)
+            # Else Observations
             else:
                 return self.model(**input)["last_hidden_state"]
 
