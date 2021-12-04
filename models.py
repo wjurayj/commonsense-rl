@@ -17,9 +17,10 @@ def emb_layer(keyed_vectors, trainable=False):
 class PretrainedEmbeddings(torch.nn.Module):
     def __init__(self,keyed_vectors, trainable = False):
         super().__init__()
-        if keyed_vectors == "bert":
+        if type(keyed_vectors) is BertModel:
             self.is_bert = True
-            self.bert = BertModel.from_pretrained('bert-base-uncased')
+            # TODO: Incorporate optional trainability
+            self.model = keyed_vectors
             self.dim = 768
         else:
             self.is_bert = False
@@ -38,10 +39,10 @@ class PretrainedEmbeddings(torch.nn.Module):
                 cmds= []
                 for i in range(input.size(0)):
                     cmd = input[i]
-                    cmds.append(self.bert(input_ids=cmd, token_type_ids=torch.zeros_like(cmd), attention_mask=((cmd!=0)+0).to(cmd.device))['last_hidden_state'])
+                    cmds.append(self.model(input_ids=cmd, token_type_ids=torch.zeros_like(cmd), attention_mask=((cmd!=0)+0).to(cmd.device))['last_hidden_state'])
                 return torch.stack(cmds).to(cmd.device)
             else:
-                return self.bert(**input)["last_hidden_state"]
+                return self.model(**input)["last_hidden_state"]
 
         else:
             N = input.shape[0]
