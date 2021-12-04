@@ -14,7 +14,7 @@ from utils.textworld_utils import serialize_facts, process_full_facts, process_s
 from utils.kg import construct_graph, add_triplets_to_graph, shortest_path_subgraph, khop_neighbor_graph, ego_graph_seed_expansion
 from utils.extractor import any_substring_extraction
 
-from transformers import BertTokenizer
+from transformers import BertTokenizer, BertModel
 # Agent must have train(), test(), act() functions and infos_to_request as properties
 
 
@@ -49,6 +49,7 @@ class KnowledgeAwareAgent:
         self._episode_has_started = False
 
         self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
 
         if self.word_emb_type is not None:
             self.word_emb = load_embeddings(self.emb_loc, self.word_emb_type)
@@ -65,7 +66,8 @@ class KnowledgeAwareAgent:
             self.node_vocab = self.graph_emb.vocab
             for i, w in enumerate(self.node_vocab):
                 self.node2id[w] = i
-        self.model = scorer.CommandScorerWithKG('bert', self.graph_emb, self.graph_type,
+
+        self.model = scorer.CommandScorerWithKG(self.bert, self.graph_emb, self.graph_type,
                                                 hidden_size=self.hidden_size, device=device)
         if torch.cuda.is_available():
             self.model.to(device)
