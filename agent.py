@@ -14,7 +14,7 @@ from utils.textworld_utils import serialize_facts, process_full_facts, process_s
 from utils.kg import construct_graph, add_triplets_to_graph, shortest_path_subgraph, khop_neighbor_graph, ego_graph_seed_expansion
 from utils.extractor import any_substring_extraction
 
-from transformers import BertTokenizer, BertModel
+from transformers import LongformerTokenizer, LongformerModel
 # Agent must have train(), test(), act() functions and infos_to_request as properties
 
 
@@ -48,8 +48,8 @@ class KnowledgeAwareAgent:
 
         self._episode_has_started = False
 
-        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.longformer_tokenizer = LongformerTokenizer.from_pretrained('allenai/longformer-base-4096')
+        self.longformer = LongformerModel.from_pretrained('allenai/longformer-base-4096')
 
         if self.word_emb_type is not None:
             self.word_emb = load_embeddings(self.emb_loc, self.word_emb_type)
@@ -67,7 +67,7 @@ class KnowledgeAwareAgent:
             for i, w in enumerate(self.node_vocab):
                 self.node2id[w] = i
 
-        self.model = scorer.CommandScorerWithKG(self.bert, self.graph_emb, self.graph_type,
+        self.model = scorer.CommandScorerWithKG(self.longformer, self.graph_emb, self.graph_type,
                                                 hidden_size=self.hidden_size, device=device)
         if torch.cuda.is_available():
             self.model.to(device)
@@ -271,14 +271,14 @@ class KnowledgeAwareAgent:
         padded_tensor = to_tensor(padded,self.device)
         return padded_tensor
     
-    def _bert_tokenize_obs(self, texts):
-        return self.bert_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.device)
+    def _lf_tokenize_obs(self, texts):
+        return self.longformer_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.device)
 
-    def _bert_tokenize_cmds(self, batch_size, infos):
+    def _lf_tokenize_cmds(self, batch_size, infos):
         command_list = []
         for b in range(batch_size):
             # TODO: Verify correct sizing
-            cmd_b = self.bert_tokenizer(infos["admissible_commands"][b],return_tensors="pt",padding=True, truncation=True)
+            cmd_b = self.longformer_tokenizer(infos["admissible_commands"][b],return_tensors="pt",padding=True, truncation=True)
             command_list.append(cmd_b['input_ids'])
         max_num_candidate = max_len(infos["admissible_commands"])
         max_num_word = max([cmd.size(1) for cmd in command_list])
@@ -316,10 +316,9 @@ class KnowledgeAwareAgent:
         state = ["{}\n{}\n{}\n{}".format(obs[b], infos["description"][b], infos["inventory"][b], ' \n'.join(
                         scored_commands[b])) for b in range(batch_size)]
         # Tokenize and pad the input and the commands to chose from.
-        # TODO: SWAP W BERT
         # obs_tensor = self._process(state, self.word2id)
-        obs_obj = self._bert_tokenize_obs(state)
-        cmds_obj = self._bert_tokenize_cmds(batch_size, infos)
+        obs_obj = self._lf_tokenize_obs(state)
+        cmds_obj = self._lf_tokenize_cmds(batch_size, infos)
         # print("OBJ SIZE", obs_obj['input_ids'].size())
         # print("CMD SIZE", cmds_obj['input_ids'].size())
         # print("CMD", cmds_obj['input_ids'])
