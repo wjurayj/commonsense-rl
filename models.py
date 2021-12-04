@@ -22,6 +22,9 @@ class PretrainedEmbeddings(torch.nn.Module):
             # TODO: Incorporate optional trainability
             self.model = keyed_vectors
             self.dim = 768
+            
+            for param in self.model.parameters():
+                param.requires_grad = trainable
         else:
             self.is_lf = False
             self.embedding = emb_layer(keyed_vectors, trainable)
