@@ -21,6 +21,8 @@ class PretrainedEmbeddings(torch.nn.Module):
             self.is_bert = True
             # TODO: Incorporate optional trainability
             self.model = keyed_vectors
+            for param in self.model.parameters():
+                param.requires_grad = trainable
             self.dim = 768
         else:
             self.is_bert = False
