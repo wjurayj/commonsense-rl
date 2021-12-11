@@ -5,7 +5,7 @@ from utils.generic import masked_softmax
 
 
 class CommandScorerWithKG(nn.Module):
-    def __init__(self, word_emb, graph_emb, graph_type, hidden_size,device):
+    def __init__(self, word_emb, graph_emb, graph_type, hidden_size,device,finetune=False):
         super(CommandScorerWithKG, self).__init__()
         self.device = device
         self.hidden_size = hidden_size
@@ -18,7 +18,7 @@ class CommandScorerWithKG(nn.Module):
         n_factor = 2 # command
         bi_factor = (2 if self.bidirectional else 1) # hidden size multiplier when bidirectional is used
 
-        self.word_embedding = PretrainedEmbeddings(word_emb)
+        self.word_embedding = PretrainedEmbeddings(word_emb, finetune)
         self.word_embedding_size = self.word_embedding.dim  # *
         self.word_embedding_prj = torch.nn.Linear(self.word_embedding_size, self.hidden_size, bias=False)
         if not self.bidirectional:

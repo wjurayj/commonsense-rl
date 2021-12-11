@@ -68,7 +68,7 @@ class KnowledgeAwareAgent:
                 self.node2id[w] = i
 
         self.model = scorer.CommandScorerWithKG(self.bert, self.graph_emb, self.graph_type,
-                                                hidden_size=self.hidden_size, device=device)
+                                                hidden_size=self.hidden_size, device=device, finetune=opt.finetune)
         if torch.cuda.is_available():
             self.model.to(device)
         # 0.00003
