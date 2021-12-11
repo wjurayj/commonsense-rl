@@ -25,7 +25,7 @@ class KnowledgeAwareAgent:
     GAMMA = 0.9
     type = "KnowledgeAware"
 
-    def __init__(self, graph, opt, tokenizer=None, rel_extractor = None, device=None) -> None:
+    def __init__(self, graph, opt, tokenizer=None, rel_extractor = None, device=None, finetune=False) -> None:
         print("Initializing Knowledge-Aware Neural Agent")
         self.seed = opt.seed
         self.hidden_size=opt.hidden_size
@@ -68,7 +68,7 @@ class KnowledgeAwareAgent:
                 self.node2id[w] = i
 
         self.model = scorer.CommandScorerWithKG(self.bigbird, self.graph_emb, self.graph_type,
-                                                hidden_size=self.hidden_size, device=device)
+                                                hidden_size=self.hidden_size, device=device, finetune=finetune)
         if torch.cuda.is_available():
             self.model.to(device)
         # 0.00003

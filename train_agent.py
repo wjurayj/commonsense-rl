@@ -235,6 +235,9 @@ if __name__ == '__main__':
     parser.add_argument('--graph_emb_type', help='Knowledge Graph Embedding type for actions: (numberbatch, complex)')
     parser.add_argument('--egreedy_epsilon', type=float, default=0.0, help="Epsilon for the e-greedy exploration")
 
+    parser.add_argument('--finetune', action='store_true', default=False,
+                        help='Fine tune the transformer model during training.')
+
     opt = parser.parse_args()
     print(opt)
     random.seed(opt.initial_seed)
@@ -287,7 +290,7 @@ if __name__ == '__main__':
         tokenizer = Tokenizer(noun_only_tokens=opt.noun_only_tokens, use_stopword=opt.use_stopword, ngram=opt.ngram,
                               extractor=tk_extractor)
         rel_extractor = RelationExtractor(tokenizer, openie_url=opt.corenlp_url)
-        myagent = agent.KnowledgeAwareAgent(graph, opt, tokenizer,rel_extractor, device)
+        myagent = agent.KnowledgeAwareAgent(graph, opt, tokenizer,rel_extractor, device, opt.finetune)
         myagent.type = opt.agent_type
 
         print("Training ...")
