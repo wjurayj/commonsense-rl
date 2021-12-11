@@ -234,7 +234,9 @@ if __name__ == '__main__':
                              ' to take car of the custom embedding locations')
     parser.add_argument('--graph_emb_type', help='Knowledge Graph Embedding type for actions: (numberbatch, complex)')
     parser.add_argument('--egreedy_epsilon', type=float, default=0.0, help="Epsilon for the e-greedy exploration")
-
+    parser.add_argument('--finetune', action='store_true', default=False,
+                        help=' Finetune the longformer model')
+    
     opt = parser.parse_args()
     print(opt)
     random.seed(opt.initial_seed)
